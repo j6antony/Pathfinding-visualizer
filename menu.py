@@ -1,5 +1,5 @@
 import pygame
-from collections import deque
+from collections import deque  
 
 # ----------------------------
 # Initialize Pygame
@@ -105,9 +105,47 @@ def create_grid(maze):
     return grid
 
 # ----------------------------
-# algorithms
+# algorithm imports would go here
 # ----------------------------
+def BFS(maze, start, end):
+    queue = deque([start])
+    visited = {start}
+    parent = {}
+    step_delay_ms = 20
 
+    def redraw():
+        for row in grid_buttons:
+            for btn in row:
+                btn.draw(window)
+        pygame.display.flip()
+        pygame.event.pump()
+        pygame.time.delay(step_delay_ms)
+
+    while queue:
+        r, c = queue.popleft()
+        if (r, c) == end:
+            break
+        if (r, c) != start:
+            grid_buttons[r][c].base_color = (0, 0, 255)  # Light Blue for visited
+            redraw()
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nr, nc = r + dr, c + dc
+
+            if 0 <= nr < maze.size and 0 <= nc < maze.size:
+                if maze.grid[nr][nc] != 1 and (nr, nc) not in visited:
+                    visited.add((nr, nc))
+                    parent[(nr, nc)] = (r, c)
+                    queue.append((nr, nc))
+    # Reconstruct path
+    if end not in parent and end != start:
+        return
+    cur = end
+    while cur and cur != start:
+        r, c = cur
+        if cur != end:
+            grid_buttons[r][c].base_color = (255, 255, 0)  # Yellow for path
+            redraw()
+        cur = parent[cur]
 
 
 # ----------------------------
@@ -115,7 +153,6 @@ def create_grid(maze):
 # ----------------------------
 start_button = Button(200, 350, 200, 50, "Get Started")
 input_box = TextInput(200, 250, 200, 50)
-
 wall_btn  = Button(30, 620, 120, 50, "Wall")
 start_btn = Button(160, 620, 120, 50, "Start")
 end_btn   = Button(290, 620, 120, 50, "End")
@@ -132,10 +169,11 @@ A_search_btn = Button(290, 620, 120, 50, "A*")
 running = True
 mode = "menu"
 selected_tool = "wall"
-maze = None
 grid_buttons = None
 start = None
 end = None
+
+
 
 while running:
     window.fill((74, 70, 70))
@@ -178,45 +216,55 @@ while running:
                 for r, row in enumerate(grid_buttons):
                     for c, btn in enumerate(row):
                         if btn.rect.collidepoint(event.pos):
+                            clicked_r, clicked_c = r, c
 
                             # WALL
                             if selected_tool == "wall":
                                 if btn.base_color == (0, 255, 0) or btn.base_color == (255, 0, 0):
                                     pass
                                 elif btn.base_color == (26, 23, 23):
-                                    maze[r][c] = 1
+                                    maze.grid[r][c] = 0
                                     btn.base_color = (74, 70, 70)
                                     btn.hover_color = (46, 44, 44)
                                 else:
-                                    maze[r][c] = 0
+                                    maze.grid[r][c] = 1
                                     btn.base_color = (26, 23, 23)
                                     btn.hover_color = (15, 15, 15)
 
                             # START (only one)
                             elif selected_tool == "start":
-                                for r, row in enumerate(grid_buttons):
-                                    for c, btn in enumerate(row):
-                                        if btn.base_color == (0, 255, 0):
-                                            maze[r][c] = 0
-                                            btn.base_color = (74, 70, 70)
-                                            btn.hover_color = (46, 44, 44)
-                                start = (r, c)
-                                maze[r][c] = 2
+                                for rr, row in enumerate(grid_buttons):
+                                    for cc, b in enumerate(row):
+                                        if b.base_color == (0, 255, 0):
+                                            maze.grid[rr][cc] = 0
+                                            b.base_color = (74, 70, 70)
+                                            b.hover_color = (46, 44, 44)
+                                start = (clicked_r, clicked_c)
+                                maze.grid[clicked_r][clicked_c] = 2
                                 btn.base_color = (0, 255, 0)
                                 btn.hover_color = (0, 200, 0)
 
                             # END (only one)
                             elif selected_tool == "end":
-                                for r in grid_buttons:
-                                    for b in r:
+                                for rr, row in enumerate(grid_buttons):
+                                    for cc, b in enumerate(row):
                                         if b.base_color == (255, 0, 0):
-                                            maze[r][c] = 0
+                                            maze.grid[rr][cc] = 0
                                             b.base_color = (74, 70, 70)
                                             b.hover_color = (46, 44, 44)
-                                end = (r, c)
-                                maze[r][c] = 3
+                                end = (clicked_r, clicked_c)
+                                maze.grid[clicked_r][clicked_c] = 3
                                 btn.base_color = (255, 0, 0)
                                 btn.hover_color = (200, 0, 0)
+        # ---------- VISUALIZING ----------
+        elif mode == "visualizing":
+            if breadth_search_btn.clicked(event):
+                if start is not None and end is not None:
+                    BFS(maze, start, end)
+            if depth_search_btn.clicked(event):
+                pass  # DFS visualization logic would go here
+            if A_search_btn.clicked(event):
+                pass  # A* visualization logic would go here
 
 
     # ---------- DRAW ----------
@@ -244,12 +292,6 @@ while running:
         for row in grid_buttons:
             for btn in row:
                 btn.draw(window)
-        if breadth_search_btn.clicked(event):
-            pass  # BFS visualization logic would go here
-        if depth_search_btn.clicked(event):
-            pass  # DFS visualization logic would go here
-        if A_search_btn.clicked(event):
-            pass  # A* visualization logic would go here
         pygame.draw.rect(window, (40, 40, 40), (0, GRID_AREA, WINDOW_WIDTH, UI_HEIGHT))
         breadth_search_btn.draw(window)
         depth_search_btn.draw(window)
@@ -258,4 +300,3 @@ while running:
     pygame.display.flip()
 
 pygame.quit()
-
